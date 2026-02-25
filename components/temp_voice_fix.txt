@@ -1,0 +1,5 @@
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      synthesisRef.current = window.speechSynthesis
+    }
+  }, [])
