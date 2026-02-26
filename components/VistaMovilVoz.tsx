@@ -131,8 +131,6 @@ export default function VistaMovilVoz({ onCitaCreada, onEnviarWhatsApp }: VistaM
     recognitionRef.current.continuous = true
     recognitionRef.current.interimResults = true
 
-    let textoAcumulado = ''  // solo resultados isFinal
-    let ultimoInterim = ''   // solo el último resultado interim
     let textoFinal = ''
     let procesando = false
 
@@ -141,16 +139,22 @@ export default function VistaMovilVoz({ onCitaCreada, onEnviarWhatsApp }: VistaM
     recognitionRef.current.onresult = (event: any) => {
       if (!llamadaActivaRef.current || procesando) return
 
-      // Procesar solo los resultados NUEVOS desde resultIndex
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      // Reconstruir desde cero en cada evento con variables LOCALES
+      // para evitar acumulación entre eventos
+      let partesFinal = ''
+      let ultimoInterim = ''
+
+      for (let i = 0; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          textoAcumulado += event.results[i][0].transcript + ' '
-          ultimoInterim = ''
+          partesFinal += event.results[i][0].transcript + ' '
         } else {
+          // Solo guardar el ÚLTIMO interim, no concatenar todos
           ultimoInterim = event.results[i][0].transcript
         }
       }
-      textoFinal = (textoAcumulado + ultimoInterim).trim()
+
+      // textoFinal se REEMPLAZA en cada evento (nunca se acumula entre eventos)
+      textoFinal = (partesFinal + ultimoInterim).trim()
 
       if (pendingTimeoutRef.current) clearTimeout(pendingTimeoutRef.current)
 
@@ -161,8 +165,6 @@ export default function VistaMovilVoz({ onCitaCreada, onEnviarWhatsApp }: VistaM
           recognitionRef.current?.stop()
           setEscuchando(false)
           await procesarMensaje(textoFinal.trim())
-          textoAcumulado = ''
-          ultimoInterim = ''
           textoFinal = ''
           procesando = false
         }
