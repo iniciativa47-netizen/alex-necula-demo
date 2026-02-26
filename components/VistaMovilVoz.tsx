@@ -131,6 +131,8 @@ export default function VistaMovilVoz({ onCitaCreada, onEnviarWhatsApp }: VistaM
     recognitionRef.current.continuous = true
     recognitionRef.current.interimResults = true
 
+    let textoAcumulado = ''  // solo resultados isFinal
+    let ultimoInterim = ''   // solo el último resultado interim
     let textoFinal = ''
     let procesando = false
 
@@ -139,11 +141,16 @@ export default function VistaMovilVoz({ onCitaCreada, onEnviarWhatsApp }: VistaM
     recognitionRef.current.onresult = (event: any) => {
       if (!llamadaActivaRef.current || procesando) return
 
-      let textoActual = ''
-      for (let i = 0; i < event.results.length; i++) {
-        textoActual += event.results[i][0].transcript
+      // Procesar solo los resultados NUEVOS desde resultIndex
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          textoAcumulado += event.results[i][0].transcript + ' '
+          ultimoInterim = ''
+        } else {
+          ultimoInterim = event.results[i][0].transcript
+        }
       }
-      textoFinal = textoActual
+      textoFinal = (textoAcumulado + ultimoInterim).trim()
 
       if (pendingTimeoutRef.current) clearTimeout(pendingTimeoutRef.current)
 
@@ -154,6 +161,8 @@ export default function VistaMovilVoz({ onCitaCreada, onEnviarWhatsApp }: VistaM
           recognitionRef.current?.stop()
           setEscuchando(false)
           await procesarMensaje(textoFinal.trim())
+          textoAcumulado = ''
+          ultimoInterim = ''
           textoFinal = ''
           procesando = false
         }
